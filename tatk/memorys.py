@@ -1,6 +1,6 @@
 import torch
 import dgl
-from layers import TimeEncode
+from .layers import TimeEncode
 from torch_scatter import scatter
 
 class EmbeddingBox():
@@ -82,6 +82,7 @@ class MailBox():
     def prep_input_mails(self, mfg, use_pinned_buffers=False):
         for i, b in enumerate(mfg):
             if use_pinned_buffers:
+                idx = b.srcdata['ID'].cpu().long()
                 dst_idx = idx[:b.num_dst_nodes()]
                 torch.index_select(self.node_memory, 0, idx, out=self.pinned_node_memory_buffs[i][:idx.shape[0]])
                 b.srcdata['mem'] = self.pinned_node_memory_buffs[i][:idx.shape[0]].cuda(non_blocking=True)
@@ -100,6 +101,7 @@ class MailBox():
     def prep_input_mails_cpu(self, mfg, use_pinned_buffers=False):
         for i, b in enumerate(mfg):
             if use_pinned_buffers:
+                idx = b.srcdata['ID'].cpu().long()
                 dst_idx = idx[:b.num_dst_nodes()]
                 torch.index_select(self.node_memory, 0, idx, out=self.pinned_node_memory_buffs[i][:idx.shape[0]])
                 b.srcdata['mem'] = self.pinned_node_memory_buffs[i][:idx.shape[0]].cuda(non_blocking=True)

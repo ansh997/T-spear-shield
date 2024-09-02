@@ -12,6 +12,10 @@ import pandas as pd
 from scipy.optimize import linear_sum_assignment
 from sklearn.neighbors import KernelDensity
 
+import getpass
+
+scratch_location = f'/scratch/{getpass.getuser()}'
+
 from .utils import (
     parse_config,
     to_dgl_blocks,
@@ -56,9 +60,10 @@ class TemporalAttack:
             model, mailbox, sampler = create_model_mailbox_sampler(node_feats, edge_feats, g, df, sample_param, memory_param, gnn_param, train_param)
 
             seed = seed if seed is not None else 0
-            self.args.model_path = f'./MODEL/AAAI/NON_ROBUST/{args.data}/none/{args.surrogate}_seed_{seed}_best_from51.pt'
+            # self.args.model_path = f'{scratch_location}/tspear/MODEL/AAAI/NON_ROBUST/{args.data}/none/{args.surrogate}_seed_{seed}_best_from51.pt'  # I think removing `best_from` should work
+            self.args.model_path = f'{scratch_location}/tspear/MODEL/AAAI/NON_ROBUST/{args.data}/none/{args.surrogate}_seed_{seed}_51.pt'
             if not os.path.isfile(self.args.model_path):
-                raise NotImplementedError
+                raise NotImplementedError(f'{self.args.model_path}')
             model.load_state_dict(torch.load(self.args.model_path))
             model.eval()
 
@@ -320,11 +325,11 @@ class TemporalAttack:
         print(f'>> [{args.attack} attack] ptb_rate: {ptb_rate}, tot_num_ptb: {tot_num_ptb}, elapsed: {t_attack_elapsed:.4f}s')
         return node_feats, edge_feats, g, df
 
-    def add_perturbations(self, node_feats, edge_feats, g, df, ptb_edge_feats, ptb_df, verbose=false):
+    def add_perturbations(self, node_feats, edge_feats, g, df, ptb_edge_feats, ptb_df, verbose=False):
         df = df.append(ptb_df)
         df = df.sort_values('time')
-        edge_feats = torch.vstack((edge_feats, ptb_edge_feats)) if ptb_edge_feats is not none else edge_feats
-        df = df.reset_index(drop=true)
+        edge_feats = torch.vstack((edge_feats, ptb_edge_feats)) if ptb_edge_feats is not None else edge_feats
+        df = df.reset_index(drop=True)
 
         num_nodes = max(int(df['src'].max()), int(df['dst'].max())) + 1
         ext_full_indptr = np.zeros(num_nodes + 1, dtype=np.int32)

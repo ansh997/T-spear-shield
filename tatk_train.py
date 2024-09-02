@@ -1,5 +1,4 @@
 import os
-import copy
 from pathlib import Path
 import pickle
 import numpy as np
@@ -74,6 +73,7 @@ def train_main(args):
 
 def attack_and_save(args):
     if args.attack == "none":
+        print('returns nothing.')
         return
 
     data_dir = get_attacked_data_dir(args)

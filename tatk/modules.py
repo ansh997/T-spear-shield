@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 import dgl
-from memorys import *
-from layers import *
+from .memorys import *
+from .layers import *
 
 class GeneralModel(torch.nn.Module):
 

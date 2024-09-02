@@ -10,7 +10,7 @@ import torch.nn.functional as F
 import numpy as np
 import pandas as pd
 from sklearn.metrics import average_precision_score, roc_auc_score
-from deeprobust.graph.defense.pgd import PGD, prox_operators
+# from deeprobust.graph.defense.pgd import PGD, prox_operators
 
 from .modules import GeneralModel, EstimateAdj
 from .memorys import MailBox, EmbeddingBox
@@ -20,7 +20,11 @@ from .utils import (
     node_to_dgl_blocks,
     prepare_input,
 )
-from pympler.tracker import SummaryTracker
+# from pympler.tracker import SummaryTracker
+
+import getpass
+
+scratch_location = f'/scratch/{getpass.getuser()}'
 
 
 def create_model_mailbox_sampler(node_feats, edge_feats, g, df, sample_param, memory_param, gnn_param, train_param):
@@ -43,9 +47,9 @@ def create_model_mailbox_sampler(node_feats, edge_feats, g, df, sample_param, me
     sampler = None
     if not ('no_sample' in sample_param and sample_param['no_sample']):
         sampler = ParallelSampler(g['indptr'], g['indices'], g['eid'], g['ts'].astype(np.float32),
-                                  sample_param['num_thread'], 1, sample_param['layer'], sample_param['neighbor'],
-                                  sample_param['strategy']=='recent', sample_param['prop_time'],
-                                  sample_param['history'], float(sample_param['duration']))
+                                sample_param['num_thread'], 1, sample_param['layer'], sample_param['neighbor'],
+                                sample_param['strategy']=='recent', sample_param['prop_time'],
+                                sample_param['history'], float(sample_param['duration']))
     
     return model, mailbox, sampler
 
@@ -178,7 +182,7 @@ def train_model_link_pred(node_feats, edge_feats, g, df, model, mailbox, sampler
             time_prep += time.time() - t_prep_s
             time_tot += time.time() - t_tot_s
 
-        model_path = f'./MODEL/{args.exp_id}/{args.exp_file}_seed_{seed}_{e}.pt'
+        model_path = f'{scratch_location}/tspear/MODEL/{args.exp_id}/{args.exp_file}_seed_{seed}_{e}.pt'
         torch.save(model.state_dict(), model_path)
 
         t_val_s = time.time()

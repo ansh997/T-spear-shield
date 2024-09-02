@@ -4,17 +4,21 @@ import pandas as pd
 import numpy as np
 from tqdm import tqdm
 import pickle
+import getpass
+
+scratch_location = f'/scratch/{getpass.getuser()}'
+
 
 
 parser=argparse.ArgumentParser()
 parser.add_argument('--data', type=str, default="WIKI")
 args=parser.parse_args()
 
-df = pd.read_csv('DATA/{}/edges.csv'.format(args.data))
+df = pd.read_csv('{}/tspear/DATA/{}/edges.csv'.format(scratch_location, args.data))
 num_nodes = max(int(df['src'].max()), int(df['dst'].max())) + 1
 print('num_nodes: ', num_nodes)
 
-ext_full_indptr = np.zeros(num_nodes + 1, dtype=np.int)
+ext_full_indptr = np.zeros(num_nodes + 1, dtype=int)
 ext_full_indices = [[] for _ in range(num_nodes)]
 ext_full_ts = [[] for _ in range(num_nodes)]
 ext_full_eid = [[] for _ in range(num_nodes)]
@@ -66,5 +70,5 @@ g = {
     'ext_full_eid': ext_full_eid
 }
 
-with open(f'DATA/{args.data}/ext_full.pkl', 'wb') as f:
+with open(f'{scratch_location}/tspear/DATA/{args.data}/ext_full.pkl', 'wb') as f:
     pickle.dump(g, f)

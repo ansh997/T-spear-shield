@@ -11,6 +11,9 @@ import dgl
 import torch
 import numpy as np
 import pandas as pd
+import getpass
+
+scratch_location = f'/scratch/{getpass.getuser()}'
 
 
 def set_random_seed(seed):
@@ -82,25 +85,25 @@ def pre_exp_setting(exp_id, args, evaluation=False):
     args.exp_id = exp_id
     args.exp_dir = exp_dir
     args.exp_file = exp_file
-    Path(f'./LOG/{exp_id}/{exp_dir}/').mkdir(parents=True, exist_ok=True)
-    Path(f'./MODEL/{exp_id}/{exp_dir}/').mkdir(parents=True, exist_ok=True)
+    Path(f'{scratch_location}/tspear/LOG/{exp_id}/{exp_dir}/').mkdir(parents=True, exist_ok=True)
+    Path(f'{scratch_location}/tspear/MODEL/{exp_id}/{exp_dir}/').mkdir(parents=True, exist_ok=True)
 
     if evaluation:
-        Path(f'./EVAL/{exp_id}/{exp_dir}/').mkdir(parents=True, exist_ok=True)
+        Path(f'{scratch_location}/tspear/EVAL/{exp_id}/{exp_dir}/').mkdir(parents=True, exist_ok=True)
         if args.use_clean_eval:
-            logger = create_logger(f'./EVAL/{exp_id}/{args.exp_file}_clean_eval.log')
+            logger = create_logger(f'{scratch_location}/tspear/EVAL/{exp_id}/{args.exp_file}_clean_eval.log')
         elif args.use_clean_test:
-            logger = create_logger(f'./EVAL/{exp_id}/{args.exp_file}_clean_test.log')
+            logger = create_logger(f'{scratch_location}/tspear/EVAL/{exp_id}/{args.exp_file}_clean_test.log')
         else:
-            logger = create_logger(f'./EVAL/{exp_id}/{args.exp_file}.log')
+            logger = create_logger(f'{scratch_location}/tspear/EVAL/{exp_id}/{args.exp_file}.log')
     else:
-        logger = create_logger(f'./LOG/{exp_id}/{args.exp_file}.log')
+        logger = create_logger(f'{scratch_location}/tspear/LOG/{exp_id}/{args.exp_file}.log')
 
     logger.warning(args)
     args.logger = logger
 
 
-def create_logger(file_name="./log/run.log"):
+def create_logger(file_name=f"{scratch_location}/tspear/log/run.log"):
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
     formatter = logging.Formatter(fmt="%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
@@ -128,13 +131,13 @@ def load_data(data, args):
 
 def load_feat(d, rand_de=0, rand_dn=0):
     node_feats = None
-    if os.path.exists('DATA/{}/node_features.pt'.format(d)):
+    if os.path.exists('{}/tspear/DATA/{}/node_features.pt'.format(scratch_location, d)):
         node_feats = torch.load('DATA/{}/node_features.pt'.format(d))
         if node_feats.dtype == torch.bool:
             node_feats = node_feats.type(torch.float32)
     edge_feats = None
-    if os.path.exists('DATA/{}/edge_features.pt'.format(d)):
-        edge_feats = torch.load('DATA/{}/edge_features.pt'.format(d))
+    if os.path.exists('{}/tspear/DATA/{}/edge_features.pt'.format(scratch_location, d)):
+        edge_feats = torch.load('{}/tspear/DATA/{}/edge_features.pt'.format(scratch_location, d))
         if edge_feats.dtype == torch.bool:
             edge_feats = edge_feats.type(torch.float32)
     if rand_de > 0:
@@ -160,20 +163,20 @@ def load_feat(d, rand_de=0, rand_dn=0):
 
 
 def load_graph(d):
-    df = pd.read_csv('DATA/{}/edges.csv'.format(d))
+    df = pd.read_csv('{}/tspear/DATA/{}/edges.csv'.format(scratch_location, d))
     # g = np.load('DATA/{}/ext_full.npz'.format(d))
-    with open(f'DATA/{d}/ext_full.pkl', 'rb') as f:
+    with open(f'{scratch_location}/tspear/DATA/{d}/ext_full.pkl', 'rb') as f:
         g = pickle.load(f)
     return g, df
 
 
 def get_attacked_data_dir(args):
     if args.attack == "proposed":
-        data_dir = f'DATA/{args.data}/ATTACKED/{args.attack}_{args.surrogate}_{args.ptb_rate}_{args.use_hungarian}'
+        data_dir = f'{scratch_location}/tspear/DATA/{args.data}/ATTACKED/{args.attack}_{args.surrogate}_{args.ptb_rate}_{args.use_hungarian}'
         if args.use_hungarian:
             data_dir += f'_{args.xpool}/'
     else:
-        data_dir = f'DATA/{args.data}/ATTACKED/{args.attack}_{args.ptb_rate}'
+        data_dir = f'{scratch_location}/tspear/DATA/{args.data}/ATTACKED/{args.attack}_{args.ptb_rate}'
         # if args.attack != "random":
         #     data_dir += f'_{args.xpool}/'
     return data_dir
@@ -328,8 +331,20 @@ def prepare_input(mfgs, node_feats, edge_feats, combine_first=False, pinned=Fals
                         b.edata['f'] = efeat_buffs[i][:idx.shape[0]].cuda(non_blocking=True)
                         i += 1
                     else:
-                        srch = edge_feats[b.edata['ID'].long()].float()
-                        b.edata['f'] = srch.cuda()
+                        # srch = edge_feats[b.edata['ID'].long()].float()
+                        # b.edata['f'] = srch.cuda()
+                        # Ensure both tensors are on the same device
+                        idx = b.edata['ID'].long()
+                        if edge_feats.is_cuda:  # If edge_feats is on GPU
+                            idx = idx.cuda()
+                        else:  # If edge_feats is on CPU
+                            idx = idx.cpu()
+                        
+                        srch = edge_feats[idx].float()  # Indexing with compatible devices
+                        # Move `srch` to the same device as the graph `b`
+                        if b.device != srch.device:
+                            srch = srch.to(b.device)
+                        b.edata['f'] = srch  # .cuda() if edge_feats.is_cuda else srch
     return mfgs
 
 

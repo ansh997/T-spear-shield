@@ -1,11 +1,13 @@
 import argparse
 import yaml
-import torch
-import time
 import numpy as np
+import getpass
 import pandas as pd
 from tqdm import tqdm
-from sampler_core import ParallelSampler, TemporalGraphBlock
+from .sampler_core import ParallelSampler, TemporalGraphBlock # compulsory
+
+scratch_location = f'/scratch/{getpass.getuser()}'
+
 
 class NegLinkSampler:
 
@@ -64,15 +66,19 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=600, help='path to config file')
     parser.add_argument('--num_thread', type=int, default=64, help='number of thread')
     args=parser.parse_args()
+    
+    # /home2/hmnshpl/projects/T-spear-shield/config/JODIE.yml
+    
+    # '{}/tspear/DATA/{}/node_features.pt'.format(scratch_location, d)
 
-    df = pd.read_csv('DATA/{}/edges.csv'.format(args.data))
-    g = np.load('DATA/{}/ext_full.npz'.format(args.data))
+    df = pd.read_csv('{}/tspear/DATA/{}/edges.csv'.format(scratch_location, args.data))
+    g = np.load('{}/tspear/DATA/{}/ext_full.npz'.format(scratch_location, args.data))
     sample_config = yaml.safe_load(open(args.config, 'r'))['sampling'][0]
 
     sampler = ParallelSampler(g['indptr'], g['indices'], g['eid'], g['ts'].astype(np.float32),
-                              args.num_thread, 1, sample_config['layer'], sample_config['neighbor'],
-                              sample_config['strategy']=='recent', sample_config['prop_time'],
-                              sample_config['history'], float(sample_config['duration']))
+                            args.num_thread, 1, sample_config['layer'], sample_config['neighbor'],
+                            sample_config['strategy']=='recent', sample_config['prop_time'],
+                            sample_config['history'], float(sample_config['duration']))
 
     num_nodes = max(int(df['src'].max()), int(df['dst'].max()))
     neg_link_sampler = NegLinkSampler(num_nodes)
